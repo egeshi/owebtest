@@ -17,7 +17,7 @@ class DefaultController extends Controller
     {
         return view('default.index');
     }
-    
+
     public function upload(Request $request)
     {
         return view('default.upload');
@@ -28,10 +28,10 @@ class DefaultController extends Controller
 
         $files = Input::file('files');
         $uploaded = 0;
-        
+
         //var_dump($files);
         //die(__FILE__ . ":" . __LINE__);
-        
+
         foreach ($files as $file) {
             $req = array('file' => 'required');
             $validator = Validator::make(array('file' => $file), $req);
@@ -63,8 +63,7 @@ class DefaultController extends Controller
     {
 
         $file_data = [];
-
-
+        $result = [];
 
         if (count($files) > 2) {
 
@@ -98,8 +97,6 @@ class DefaultController extends Controller
                 }
             }
 
-            $result = [];
-
             //1. find if string is different (*) (original|changed)
             //2. find if string only exists in first file (-) (original)
             //3. find if string exists in all files (" ")
@@ -127,41 +124,68 @@ class DefaultController extends Controller
             }
         } elseif (count($files) == 2) {
             //1. find if strings are different (*) (original|changed)
-            //2. find if string only exists in first file (-) (original)
-            //3. find if string only exists in second file (+) (different)
+            //2. find if string only exists in first file, removed (-) (show old)
+            //3. find if string only exists in second file, added (+) (show new)
             //4. find if string exists in both files (" ")
 
-            
-            
-            foreach ($files as $k=>$file) {
+            foreach ($files as $k => $file) {
 
                 if (!$opened = $file->openFile("r")) {
                     $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
                     Redirect::to('index')->withErrors($errors);
                 }
-                
-                
 
                 foreach ($opened as $i => $line) {
                     $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
                 }
             }
 
-            var_dump($file_data);
             $both = array_intersect($file_data[0], $file_data[1]);
-            $diff = array_diff($file_data[0], $file_data[1]);
+            $removed = array_diff($file_data[0], $file_data[1]);
+            $added = array_diff($file_data[1], $file_data[0]);
+
+            $possiblyChanged = array_intersect_key($file_data[0], $file_data[1]);
+            foreach ($possiblyChanged as $k => $v) {
+                if ($file_data[1][$k] !== $v && !in_array($v, $both)) {
+
+                    $changed[$k] = $v . "|" . $file_data[1][$k];
+
+                    if (array_key_exists($k, $added)) {
+                        unset($added[$k]);
+                        unset($removed[$k]);
+                    } elseif (array_key_exists($k, $removed)) {
+                        unset($changed[$k]);
+                    }
+                }
+            }
+
+            foreach ($changed as $k => $v) {
+                $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
+            }
             
-            var_dump($both);
-            var_dump($diff);
+            foreach ($removed as $k => $v) {
+                $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
+            }
 
+            foreach ($both as $k => $v) {
+                $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
+            }
 
-            die(__FILE__ . ":" . __LINE__);
-        } else {
-            die(__FILE__ . ":" . __LINE__);
+            foreach ($added as $k => $v) {
+                $idx = count($file_data[0])<count($file_data[1]) ? $k+2 : $k+1;
+                $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
+            }
+
+            $result = array_merge($result_changed, $result_removed, $result_both, $result_added);
+
+            $line = [];
+            foreach ($result as $k => $row) {
+                $line[] = $row['line'];
+            }
+
+            array_multisort($line, SORT_ASC, $result);
+
         }
-
-        //var_dump($result);
-        //die(__FILE__ . ":" . __LINE__);
 
         return $result;
     }

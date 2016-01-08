@@ -39,5 +39,7 @@
     </div>
 </div>
 
+<div id="response"></div>
+
 @endsection
 
