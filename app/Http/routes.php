@@ -11,7 +11,8 @@
   |
  */
 
-Route::post('/upload', 'DefaultController@upload');
+Route::get('/', 'DefaultController@index');
+Route::post('/process', 'DefaultController@process');
 
 /*
   |--------------------------------------------------------------------------
@@ -25,7 +26,7 @@ Route::post('/upload', 'DefaultController@upload');
  */
 
 Route::group(['middleware' => ['web']], function () {
-    Route::get('/', function () {
-        return view('default.index');
+    Route::get('/upload', function () {
+        return view('default.upload');
     });
 });

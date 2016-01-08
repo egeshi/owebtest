@@ -3,17 +3,17 @@
     <head>
         <title>Compare files</title>
 
-        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="/js/deps.js"></script>
+        <script src="/js/app.js"></script>
+        <link rel="stylesheet" href="/css/app.css" type="text/css"/>
+        @yield('scripts')
+        @yield('meta')
     </head>
 
     <body>
-        <!-- <div class="container">
-            <nav class="navbar navbar-default">
-                
-            </nav>
-        </div> -->
-
-        @yield('content')
+        <div class="container">
+            @yield('content')
+        </div>
     </body>
 </html>
 

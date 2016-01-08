@@ -17,13 +17,21 @@ class DefaultController extends Controller
     {
         return view('default.index');
     }
-
+    
     public function upload(Request $request)
+    {
+        return view('default.upload');
+    }
+
+    public function process(Request $request)
     {
 
         $files = Input::file('files');
         $uploaded = 0;
-
+        
+        //var_dump($files);
+        //die(__FILE__ . ":" . __LINE__);
+        
         foreach ($files as $file) {
             $req = array('file' => 'required');
             $validator = Validator::make(array('file' => $file), $req);
