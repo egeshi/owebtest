@@ -13,24 +13,38 @@ use MessageBag;
 class DefaultController extends Controller
 {
 
+    /**
+     * Login form page
+     * 
+     * @param Request $request
+     * @return type
+     */
     public function index(Request $request)
     {
         return view('default.index');
     }
 
+    /**
+     * Display upload form
+     * @param Request $request
+     * @return type
+     */
     public function upload(Request $request)
     {
         return view('default.upload');
     }
 
+    /**
+     * Process uploaded files
+     * 
+     * @param Request $request
+     * @return type
+     */
     public function process(Request $request)
     {
 
         $files = Input::file('files');
         $uploaded = 0;
-
-        //var_dump($files);
-        //die(__FILE__ . ":" . __LINE__);
 
         foreach ($files as $file) {
             $req = array('file' => 'required');
@@ -51,9 +65,12 @@ class DefaultController extends Controller
             return Redirect::to('index')->withInput()->withErrors($validator);
         }
 
-        return view('default.result', [
-            'result' => $diff
-        ]);
+        //return view('default.result', [
+        //    'result' => $diff
+        //]);
+        
+        return response()->json(['result' => $diff]);
+        
     }
 
     /**
@@ -153,25 +170,33 @@ class DefaultController extends Controller
                 }
             }
 
-            foreach ($changed as $k => $v) {
-                $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
+            $result_changed[] = ['value' => null, 'diff' => null, 'line' => null];
+            if ($changed) {
+                foreach ($changed as $k => $v) {
+                    $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
+                }
             }
 
+            $result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
             if ($removed) {
                 foreach ($removed as $k => $v) {
                     $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
                 }
-            } else {
-                $result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
             }
 
-            foreach ($both as $k => $v) {
-                $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
+            $result_both[] = ['value' => null, 'diff' => null, 'line' => null];
+            if ($both) {
+                foreach ($both as $k => $v) {
+                    $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
+                }
             }
 
-            foreach ($added as $k => $v) {
-                $idx = count($file_data[0]) < count($file_data[1]) ? $k + 2 : $k + 1;
-                $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
+            $result_added[] = ['value' => null, 'diff' => null, 'line' => null];
+            if ($added) {
+                foreach ($added as $k => $v) {
+                    $idx = count($file_data[0]) < count($file_data[1]) ? $k + 2 : $k + 1;
+                    $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
+                }
             }
 
             $result = array_merge($result_changed, $result_removed, $result_both, $result_added);
