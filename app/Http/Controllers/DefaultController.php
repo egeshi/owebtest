@@ -65,10 +65,10 @@ class DefaultController extends Controller
      * 3. find if string only exists in second file, added (+) (show new)
      * 4. find if string exists in both files (" ")
      * 
-     * If more than 2 files, we compare with 1st one
+     * If more than 2 files
      * 1. find if string does not exist in first file (+)
-     * 1. find if string exists only in first file (-)
-     * 2. find if string exists in all files (" ")
+     * 2. find if string exists only in first file (-)
+     * 3. find if strings are different (*) (original|changed)
      * 
      */
     protected function diff($files)
@@ -77,88 +77,62 @@ class DefaultController extends Controller
         $file_data = [];
         $result = [];
 
-        if (count($files) > 2) {
+        foreach ($files as $k => $file) {
 
-            foreach ($files as $fid => $file) {
-
-                if (!$opened = $file->openFile("r")) {
-                    $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
-                    Redirect::to('index')->withErrors($errors);
-                }
-
-                foreach ($opened as $line) {
-                    $value = trim(str_replace("/\r\n/", "", $line));
-                    if ($value) {
-                        $file_data[$fid][] = $value;
-                    }
-                }
+            if (!$opened = $file->openFile("r")) {
+                $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
+                Redirect::to('index')->withErrors($errors);
             }
+
+            foreach ($opened as $i => $line) {
+                $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
+            }
+        }
+
+        if (count($files) > 2) {
 
             $base = $file_data[0];
             unset($file_data[0]);
             sort($file_data);
             $processed = 0;
 
-            do {
-                foreach ($file_data as $fid => $f) {
-
-                    foreach ($f as $lid => $line) {
-
-                        $result[$lid] = [
-                            'line' => $lid + 1,
-                            'diff' => null,
-                            'value' => '',
-                        ];
-
-                        if (!in_array($line, $base)) {
-                            $result[$lid]['diff'] = '+';
-                            $result[$lid]['value'] = $line;
-                        }
-                    }
-                    $processed++;
-                }
-            } while ($processed < count($file_data));
-
-            $processed = 0;
             foreach ($base as $lid => $line) {
                 $result[$lid] = [
                     'line' => $lid + 1,
                     'diff' => null,
-                    'value' => '',
+                    'value' => $line,
                 ];
-                
-                $found = false;
-                
+
                 foreach ($file_data as $fid => $f) {
-                    do {
-                        if (in_array($line, $f)) {
-                           $found = $line;
+                    if (in_array($line, $f)) {
+                        $result[$lid]['diff'] = '*';
+                        if (!strstr($result[$lid]['value'], $line)) {
+                            $result[$lid]['value'] .= "|" . $line;
                         }
-                        $processed++;
-                    } while ($processed < count($file_data));
-                }
-                
-                if (!$found){
-                    $result[$lid]['diff'] = '-';
-                    $result[$lid]['value'] = $line;
-                } else {
-                    $result[$lid]['value'] = $line;
+                    } else {
+                        $result[$lid]['diff'] = '-';
+                        $result[$lid]['value'] = $line;
+                    }
                 }
             }
-            
+
+            $processed = 0;
+            foreach ($file_data as $fid => $f) {
+                foreach ($f as $lid => $line) {
+                    if (in_array($line, $base)) {
+                        if (!strstr($result[$lid]['value'], $line)) {
+                            $result[$lid]['value'] .= "|" . $line;
+                            $result[$lid]['line'] = $lid + 1;
+                            $result[$lid]['diff'] = "*";
+                        }
+                    } else {
+                        $result[$lid]['value'] = $line;
+                        $result[$lid]['line'] = $lid + 1;
+                        $result[$lid]['diff'] = "+";
+                    }
+                }
+            }
         } elseif (count($files) == 2) {
-            
-            foreach ($files as $k => $file) {
-
-                if (!$opened = $file->openFile("r")) {
-                    $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
-                    Redirect::to('index')->withErrors($errors);
-                }
-
-                foreach ($opened as $i => $line) {
-                    $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
-                }
-            }
 
             $both = array_intersect($file_data[0], $file_data[1]);
             $removed = array_diff($file_data[0], $file_data[1]);
@@ -183,8 +157,12 @@ class DefaultController extends Controller
                 $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
             }
 
-            foreach ($removed as $k => $v) {
-                $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
+            if ($removed) {
+                foreach ($removed as $k => $v) {
+                    $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
+                }
+            } else {
+                $result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
             }
 
             foreach ($both as $k => $v) {
