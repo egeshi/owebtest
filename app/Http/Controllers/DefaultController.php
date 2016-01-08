@@ -7,10 +7,8 @@ use App\Http\Requests;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Input;
 use Validator;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\MessageBag;
-use Symfony\Component\HttpFoundation\File\File as File;
+use Redirect;
+use MessageBag;
 
 class DefaultController extends Controller
 {
@@ -39,7 +37,6 @@ class DefaultController extends Controller
         }
 
         if ($uploaded == count($files)) {
-            Session::flash('success', 'All files uploaded!');
             $diff = $this->diff($saved);
             Redirect::to('index');
         } else {
@@ -47,7 +44,7 @@ class DefaultController extends Controller
         }
 
         return view('default.result', [
-            'result'=>$diff
+            'result' => $diff
         ]);
     }
 
@@ -58,8 +55,11 @@ class DefaultController extends Controller
     {
 
         $file_data = [];
-        
+
+
+
         if (count($files) > 2) {
+
             foreach ($files as $file) {
 
                 if (!$opened = $file->openFile("r")) {
@@ -67,9 +67,9 @@ class DefaultController extends Controller
                     Redirect::to('index')->withErrors($errors);
                 }
 
-                foreach ($opened as $line) {
+                foreach ($opened as $k => $line) {
                     $value = trim(str_replace("/\r\n/", "", $line));
-                    if ($value){
+                    if ($value) {
                         $file_data[$opened->getFilename()]['lines'][] = $value;
                     }
                 }
@@ -108,7 +108,7 @@ class DefaultController extends Controller
                             $result[$k]['value'] = $cmp['lines'][$k]; //strings are equal
                             $result[$k]['diff'] = '';
                         } elseif (strcmp($cmp['lines'][$k], $c['lines'][$k]) != 0) {
-                            $result[$k]['value'] .= "|".$c['lines'][$k];
+                            $result[$k]['value'] .= "|" . $c['lines'][$k];
                             $result[$k]['diff'] = '*';
                         }
                     } else {
@@ -118,21 +118,44 @@ class DefaultController extends Controller
                 }
             }
         } elseif (count($files) == 2) {
-            //1. find if string is different (*) (original|changed)
+            //1. find if strings are different (*) (original|changed)
             //2. find if string only exists in first file (-) (original)
-            //3. find if string exists NOT in first file (+) (different)
+            //3. find if string only exists in second file (+) (different)
             //4. find if string exists in both files (" ")
+
             
+            
+            foreach ($files as $k=>$file) {
+
+                if (!$opened = $file->openFile("r")) {
+                    $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
+                    Redirect::to('index')->withErrors($errors);
+                }
+                
+                
+
+                foreach ($opened as $i => $line) {
+                    $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
+                }
+            }
+
+            var_dump($file_data);
+            $both = array_intersect($file_data[0], $file_data[1]);
+            $diff = array_diff($file_data[0], $file_data[1]);
+            
+            var_dump($both);
+            var_dump($diff);
+
+
             die(__FILE__ . ":" . __LINE__);
         } else {
             die(__FILE__ . ":" . __LINE__);
         }
-        
+
         //var_dump($result);
         //die(__FILE__ . ":" . __LINE__);
-        
+
         return $result;
-        
     }
 
 }
