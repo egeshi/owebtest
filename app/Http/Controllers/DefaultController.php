@@ -58,6 +58,18 @@ class DefaultController extends Controller
 
     /**
      * Compare files
+     * 
+     * If 2 files provided:
+     * 1. find if strings are different (*) (original|changed)
+     * 2. find if string only exists in first file, removed (-) (show old)
+     * 3. find if string only exists in second file, added (+) (show new)
+     * 4. find if string exists in both files (" ")
+     * 
+     * If more than 2 files, we compare with 1st one
+     * 1. find if string does not exist in first file (+)
+     * 1. find if string exists only in first file (-)
+     * 2. find if string exists in all files (" ")
+     * 
      */
     protected function diff($files)
     {
@@ -67,67 +79,75 @@ class DefaultController extends Controller
 
         if (count($files) > 2) {
 
-            foreach ($files as $file) {
+            foreach ($files as $fid => $file) {
 
                 if (!$opened = $file->openFile("r")) {
                     $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
                     Redirect::to('index')->withErrors($errors);
                 }
 
-                foreach ($opened as $k => $line) {
+                foreach ($opened as $line) {
                     $value = trim(str_replace("/\r\n/", "", $line));
                     if ($value) {
-                        $file_data[$opened->getFilename()]['lines'][] = $value;
+                        $file_data[$fid][] = $value;
                     }
                 }
             }
 
-            $largest = '';
-            $longest = 0;
-            $cmp = [];
-            foreach ($file_data as $k => $f) {
-                end($file_data[$k]['lines']);
-                $length = key($file_data[$k]['lines']);
-                $file_data[$k]['length'] = $length;
-                if ($length > $longest) {
-                    $longest = $length;
-                    $largest = $k;
-                    $cmp = $file_data[$k];
-                    unset($file_data[$k]);
-                }
-            }
+            $base = $file_data[0];
+            unset($file_data[0]);
+            sort($file_data);
+            $processed = 0;
 
-            //1. find if string is different (*) (original|changed)
-            //2. find if string only exists in first file (-) (original)
-            //3. find if string exists in all files (" ")
+            do {
+                foreach ($file_data as $fid => $f) {
 
-            foreach ($cmp['lines'] as $k => $l) {
-                $result[$k] = [
-                    'value' => $cmp['lines'][$k],
-                    'diff' => null,
-                    'line' => $k,
-                ];
-                foreach ($file_data as $c) {
-                    if (array_key_exists($k, $c['lines'])) {
-                        if (strcmp($cmp['lines'][$k], $c['lines'][$k]) == 0) {
-                            $result[$k]['value'] = $cmp['lines'][$k]; //strings are equal
-                            $result[$k]['diff'] = '';
-                        } elseif (strcmp($cmp['lines'][$k], $c['lines'][$k]) != 0) {
-                            $result[$k]['value'] .= "|" . $c['lines'][$k];
-                            $result[$k]['diff'] = '*';
+                    foreach ($f as $lid => $line) {
+
+                        $result[$lid] = [
+                            'line' => $lid + 1,
+                            'diff' => null,
+                            'value' => '',
+                        ];
+
+                        if (!in_array($line, $base)) {
+                            $result[$lid]['diff'] = '+';
+                            $result[$lid]['value'] = $line;
                         }
-                    } else {
-                        $result[$k]['value'] = $cmp['lines'][$k]; //string only exists in first array
-                        $result[$k]['diff'] = '-';
                     }
+                    $processed++;
+                }
+            } while ($processed < count($file_data));
+
+            $processed = 0;
+            foreach ($base as $lid => $line) {
+                $result[$lid] = [
+                    'line' => $lid + 1,
+                    'diff' => null,
+                    'value' => '',
+                ];
+                
+                $found = false;
+                
+                foreach ($file_data as $fid => $f) {
+                    do {
+                        if (in_array($line, $f)) {
+                           $found = $line;
+                        }
+                        $processed++;
+                    } while ($processed < count($file_data));
+                }
+                
+                if (!$found){
+                    $result[$lid]['diff'] = '-';
+                    $result[$lid]['value'] = $line;
+                } else {
+                    $result[$lid]['value'] = $line;
                 }
             }
+            
         } elseif (count($files) == 2) {
-            //1. find if strings are different (*) (original|changed)
-            //2. find if string only exists in first file, removed (-) (show old)
-            //3. find if string only exists in second file, added (+) (show new)
-            //4. find if string exists in both files (" ")
-
+            
             foreach ($files as $k => $file) {
 
                 if (!$opened = $file->openFile("r")) {
@@ -162,7 +182,7 @@ class DefaultController extends Controller
             foreach ($changed as $k => $v) {
                 $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
             }
-            
+
             foreach ($removed as $k => $v) {
                 $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
             }
@@ -172,7 +192,7 @@ class DefaultController extends Controller
             }
 
             foreach ($added as $k => $v) {
-                $idx = count($file_data[0])<count($file_data[1]) ? $k+2 : $k+1;
+                $idx = count($file_data[0]) < count($file_data[1]) ? $k + 2 : $k + 1;
                 $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
             }
 
@@ -184,7 +204,6 @@ class DefaultController extends Controller
             }
 
             array_multisort($line, SORT_ASC, $result);
-
         }
 
         return $result;
