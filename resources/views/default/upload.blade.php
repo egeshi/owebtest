@@ -3,7 +3,9 @@
 @section('meta')
 @endsection
 
-@section('scripts')
+@section('scripts-body')
+<script src="/js/app.js"></script>
+<script src="/js/deps.js"></script>
 <script>
     $(function(){
         $.ajaxPrefilter(function(options, originalOptions, xhr){
@@ -25,7 +27,7 @@
             <h2>{!! Session::get('success') !!}</h2>
         </div>
         @endif
-        <div class="secure">Choose two or more files from your machine</div>
+        <p id="pleaseSelect">Choose files from your machine</p>
         {!! Form::open(array('url'=>'process', 'method'=>'POST', 'files'=>true, 'id'=>'fileupload', 'multiple'=>true)) !!}
         <div class="control-group">
             <div class="controls">

@@ -13,6 +13,6 @@ var elixir = require('laravel-elixir');
 
 elixir(function(mix) {
     mix.sass('app.scss')
-    .browserify('deps.js');
+            .browserify('deps.js');
     mix.copy('resources/assets/js/app.js', 'public/js/app.js');
 });

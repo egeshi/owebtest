@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <h1>Result</h1>
 <table>
     <thead>
@@ -20,5 +17,5 @@
         @endforeach
     </tbody>
 </table>
-@endsection
+
 

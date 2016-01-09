@@ -12,6 +12,10 @@ use MessageBag;
 
 class DefaultController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
 
     /**
      * Login form page
@@ -29,10 +33,10 @@ class DefaultController extends Controller
      * @param Request $request
      * @return type
      */
-    public function upload(Request $request)
-    {
-        return view('default.upload');
-    }
+//    public function upload(Request $request)
+//    {
+//        return view('default.upload');
+//    }
 
     /**
      * Process uploaded files
@@ -65,12 +69,9 @@ class DefaultController extends Controller
             return Redirect::to('index')->withInput()->withErrors($validator);
         }
 
-        //return view('default.result', [
-        //    'result' => $diff
-        //]);
-        
-        return response()->json(['result' => $diff]);
-        
+        return view('default.result', [
+            'result' => $diff
+        ]);
     }
 
     /**
