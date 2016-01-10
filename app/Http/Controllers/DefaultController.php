@@ -50,7 +50,7 @@ class DefaultController extends Controller
 
         foreach ($files as $file) {
             $req = array(
-                'file' => 'required|mimes:text');
+                'file' => 'required|mimes:css,csv,html,htm,txt,text,conf,def,list,log,in');
             $validator = Validator::make(array('file' => $file), $req);
 
             if ($validator->passes()) {
