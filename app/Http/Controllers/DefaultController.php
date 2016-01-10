@@ -12,6 +12,7 @@ use MessageBag;
 
 class DefaultController extends Controller
 {
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -31,17 +32,23 @@ class DefaultController extends Controller
     /**
      * Process uploaded files
      *
-     * @param  Request $request
-     * @return type
+     * If 2 files provided:
+     * 1. find if strings are different (*) (original|changed)
+     * 2. find if string only exists in first file, removed (-) (show old)
+     * 3. find if string only exists in second file, added (+) (show new)
+     * 4. find if string exists in both files (" ")
+     *
+     * If more than 2 files
+     * 1. find if string does not exist in first file (+)
+     * 2. find if string exists only in first file (-)
+     * 3. find if strings are different (*) (original|changed)
+     *
      */
     public function process(Request $request)
     {
 
         $files = Input::file('files');
         $uploaded = 0;
-        
-        //var_dump(Input::all());
-        //die(__FILE__ . ":" . __LINE__);
 
         foreach ($files as $file) {
             $req = array('file' => 'required');
@@ -56,154 +63,116 @@ class DefaultController extends Controller
         }
 
         if ($uploaded == count($files)) {
-            $diff = $this->diff($saved);
-            Redirect::to('index');
+
+            $file_data = [];
+            $result = [];
+
+            foreach ($saved as $k => $file) {
+
+                if (!$opened = $file->openFile("r")) {
+                    $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
+                    Redirect::to('index')->withErrors($errors);
+                }
+
+                foreach ($opened as $i => $line) {
+                    $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
+                }
+            }
+            
+            if (count($file_data) > 2) {
+                
+                $base = $file_data[0];
+                array_shift($file_data);
+
+                do {
+                    $result[] = $this->diff($base, $file_data[0]);
+                    array_shift($file_data);
+                } while (count($file_data));
+            } else {
+                $result = $this->diff($file_data[0], $file_data[1]);
+            }
         } else {
             return Redirect::to('index')->withInput()->withErrors($validator);
         }
+        
+        var_dump($result);
+        die(__FILE__ . ":" . __LINE__);
 
         return view(
             'default.result',
             [
-            'result' => $diff
-            ]
+            'result' => $diff,
+            'multi' => ((count($files) > 2) ? true : false)
+                ]
         );
     }
 
-    /**
-     * Compare files
-     *
-     * If 2 files provided:
-     * 1. find if strings are different (*) (original|changed)
-     * 2. find if string only exists in first file, removed (-) (show old)
-     * 3. find if string only exists in second file, added (+) (show new)
-     * 4. find if string exists in both files (" ")
-     *
-     * If more than 2 files
-     * 1. find if string does not exist in first file (+)
-     * 2. find if string exists only in first file (-)
-     * 3. find if strings are different (*) (original|changed)
-     */
-    protected function diff($files)
+    protected function diff($base, $comp)
     {
 
-        $file_data = [];
-        $result = [];
+        $both = array_intersect($base, $comp);
+        $removed = array_diff($base, $comp);
+        $added = array_diff($comp, $base);
 
-        foreach ($files as $k => $file) {
+        $na = array_intersect_key($base, $comp);
+        foreach ($na as $k => $v) {
+            if ($comp[$k] !== $v && !in_array($v, $both)) {
 
-            if (!$opened = $file->openFile("r")) {
-                $errors = MessageBag::add(0, sprintf("File %s cannot be read", $file->fileName));
-                Redirect::to('index')->withErrors($errors);
+                $changed[$k] = $v . "|" . $comp[$k];
+
+                if (array_key_exists($k, $added)) {
+                    unset($added[$k]);
+                    unset($removed[$k]);
+                } elseif (array_key_exists($k, $removed)) {
+                    unset($changed[$k]);
+                }
             }
+        }
+        
+        
+//        var_dump($both);
+//        var_dump($removed);
+//        var_dump($added);
+//        var_dump($changed);
+//        die(__FILE__ . ":" . __LINE__);
 
-            foreach ($opened as $i => $line) {
-                $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
+        //$result_changed[] = ['value' => null, 'diff' => null, 'line' => null];
+        if (count($changed)) {
+            foreach ($changed as $k => $v) {
+                $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
+            }
+        }
+        
+        //$result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
+        if (count($removed)) {
+            foreach ($removed as $k => $v) {
+                $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
             }
         }
 
-        if (count($files) > 2) {
-
-            $base = $file_data[0];
-            unset($file_data[0]);
-            sort($file_data);
-            $processed = 0;
-
-            foreach ($base as $lid => $line) {
-                $result[$lid] = [
-                    'line' => $lid + 1,
-                    'diff' => null,
-                    'value' => $line,
-                ];
-
-                foreach ($file_data as $fid => $f) {
-                    if (in_array($line, $f)) {
-                        $result[$lid]['diff'] = '*';
-                        if (!strstr($result[$lid]['value'], $line)) {
-                            $result[$lid]['value'] .= "|" . $line;
-                        }
-                    } else {
-                        $result[$lid]['diff'] = '-';
-                        $result[$lid]['value'] = $line;
-                    }
-                }
+        //$result_both[] = ['value' => null, 'diff' => null, 'line' => null];
+        if (count($both)) {
+            foreach ($both as $k => $v) {
+                $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
             }
-
-            $processed = 0;
-            foreach ($file_data as $fid => $f) {
-                foreach ($f as $lid => $line) {
-                    if (in_array($line, $base)) {
-                        if (!strstr($result[$lid]['value'], $line)) {
-                            $result[$lid]['value'] .= "|" . $line;
-                            $result[$lid]['line'] = $lid + 1;
-                            $result[$lid]['diff'] = "*";
-                        }
-                    } else {
-                        $result[$lid]['value'] = $line;
-                        $result[$lid]['line'] = $lid + 1;
-                        $result[$lid]['diff'] = "+";
-                    }
-                }
-            }
-        } elseif (count($files) == 2) {
-
-            $both = array_intersect($file_data[0], $file_data[1]);
-            $removed = array_diff($file_data[0], $file_data[1]);
-            $added = array_diff($file_data[1], $file_data[0]);
-
-            $possiblyChanged = array_intersect_key($file_data[0], $file_data[1]);
-            foreach ($possiblyChanged as $k => $v) {
-                if ($file_data[1][$k] !== $v && !in_array($v, $both)) {
-
-                    $changed[$k] = $v . "|" . $file_data[1][$k];
-
-                    if (array_key_exists($k, $added)) {
-                        unset($added[$k]);
-                        unset($removed[$k]);
-                    } elseif (array_key_exists($k, $removed)) {
-                        unset($changed[$k]);
-                    }
-                }
-            }
-
-            $result_changed[] = ['value' => null, 'diff' => null, 'line' => null];
-            if ($changed) {
-                foreach ($changed as $k => $v) {
-                    $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
-                }
-            }
-
-            $result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
-            if ($removed) {
-                foreach ($removed as $k => $v) {
-                    $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
-                }
-            }
-
-            $result_both[] = ['value' => null, 'diff' => null, 'line' => null];
-            if ($both) {
-                foreach ($both as $k => $v) {
-                    $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
-                }
-            }
-
-            $result_added[] = ['value' => null, 'diff' => null, 'line' => null];
-            if ($added) {
-                foreach ($added as $k => $v) {
-                    $idx = count($file_data[0]) < count($file_data[1]) ? $k + 2 : $k + 1;
-                    $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
-                }
-            }
-
-            $result = array_merge($result_changed, $result_removed, $result_both, $result_added);
-
-            $line = [];
-            foreach ($result as $k => $row) {
-                $line[] = $row['line'];
-            }
-
-            array_multisort($line, SORT_ASC, $result);
         }
+
+        //$result_added[] = ['value' => null, 'diff' => null, 'line' => null];
+        if (count($added)) {
+            foreach ($added as $k => $v) {
+                $idx = count($base) < count($comp) ? $k + 2 : $k + 1;
+                $result_added[] = ['value' => $v, 'diff' => '+', 'line' => $idx];
+            }
+        }
+
+        $result = array_merge($result_changed, $result_removed, $result_both, $result_added);
+
+        $line = [];
+        foreach ($result as $k => $row) {
+            $line[] = $row['line'];
+        }
+
+        array_multisort($line, SORT_ASC, $result);
 
         return $result;
     }
