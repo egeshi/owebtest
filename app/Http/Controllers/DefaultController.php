@@ -78,9 +78,9 @@ class DefaultController extends Controller
                     $file_data[$k][] = trim(str_replace("/\r\n/", "", $line));
                 }
             }
-            
+
             if (count($file_data) > 2) {
-                
+
                 $base = $file_data[0];
                 array_shift($file_data);
 
@@ -95,15 +95,12 @@ class DefaultController extends Controller
             return Redirect::to('index')->withInput()->withErrors($validator);
         }
         
-        var_dump($result);
-        die(__FILE__ . ":" . __LINE__);
-
         return view(
             'default.result',
             [
-            'result' => $diff,
+            'result' => $result,
             'multi' => ((count($files) > 2) ? true : false)
-                ]
+            ]
         );
     }
 
@@ -128,36 +125,25 @@ class DefaultController extends Controller
                 }
             }
         }
-        
-        
-//        var_dump($both);
-//        var_dump($removed);
-//        var_dump($added);
-//        var_dump($changed);
-//        die(__FILE__ . ":" . __LINE__);
 
-        //$result_changed[] = ['value' => null, 'diff' => null, 'line' => null];
         if (count($changed)) {
             foreach ($changed as $k => $v) {
                 $result_changed[] = ['value' => $v, 'diff' => '*', 'line' => $k + 1];
             }
         }
-        
-        //$result_removed[] = ['value' => null, 'diff' => null, 'line' => null];
+
         if (count($removed)) {
             foreach ($removed as $k => $v) {
                 $result_removed[] = ['value' => $v, 'diff' => '-', 'line' => $k + 1];
             }
         }
 
-        //$result_both[] = ['value' => null, 'diff' => null, 'line' => null];
         if (count($both)) {
             foreach ($both as $k => $v) {
                 $result_both[] = ['value' => $v, 'diff' => '', 'line' => $k + 1];
             }
         }
 
-        //$result_added[] = ['value' => null, 'diff' => null, 'line' => null];
         if (count($added)) {
             foreach ($added as $k => $v) {
                 $idx = count($base) < count($comp) ? $k + 2 : $k + 1;
@@ -165,7 +151,12 @@ class DefaultController extends Controller
             }
         }
 
-        $result = array_merge($result_changed, $result_removed, $result_both, $result_added);
+        $result = array_merge(
+            (isset($result_changed) ? $result_changed : array()),
+            (isset($result_removed) ? $result_removed : array()),
+            (isset($result_both) ? $result_both : array()),
+            (isset($result_added) ? $result_added : array())
+        );
 
         $line = [];
         foreach ($result as $k => $row) {
