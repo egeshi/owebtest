@@ -1,0 +1,55 @@
+#!/bin/sh
+ROOT_DIR="$(pwd)/"
+LIST=$(git diff-index --cached --name-only --diff-filter=ACMR HEAD)
+ERRORS_BUFFER=""
+for file in $LIST
+do
+    EXTENSION=$(echo "$file" | grep ".php$")
+    if [ "$EXTENSION" != "" ]; then
+        ERRORS=$(php -l $ROOT_DIR$file 2>&1 | grep "Parse error")
+        if [ "$ERRORS" != "" ]; then
+            if [ "$ERRORS_BUFFER" != "" ]; then
+                ERRORS_BUFFER="$ERRORS_BUFFER\n$ERRORS"
+            else
+                ERRORS_BUFFER="$ERRORS"
+            fi
+            echo "Syntax errors found in file: $file "
+        fi
+    fi
+done
+
+PHPCS_ERRORS_BUFFER=""
+for file in $LIST
+do
+    EXTENSION=$(echo "$file" | grep ".php$")
+    if [ "$EXTENSION" != "" ]; then
+    OUTPUT=$(phpcs -n --standard=PSR2 $ROOT_DIR$file)
+        RETVAL=$?
+
+        if [ $RETVAL -ne 0 ]; then
+            PHPCS_ERRORS_BUFFER="$PHPCS_ERRORS_BUFFER\n$OUTPUT"
+        fi
+    fi
+done
+
+if [ "$ERRORS_BUFFER" != "" ] || [ "$PHPCS_ERRORS_BUFFER" != "" ]; then
+    if [ "$ERRORS_BUFFER" != "" ]; then
+        echo 
+        echo "These syntax errors were found in try-to-commit files: "
+        echo -e $ERRORS_BUFFER
+        echo 
+    fi
+
+    if [ "$PHPCS_ERRORS_BUFFER" != "" ]; then
+        echo 
+        echo "These Coding Standard errors were found in try-to-commit files: "
+        echo -e "$PHPCS_ERRORS_BUFFER"
+        echo 
+    fi
+
+    echo "Can't commit, fix errors first."
+    exit 1
+fi
+
+echo "Commited successfully."
+
