@@ -18,20 +18,24 @@ $(function(){
 
         if (hasFile >= 2) {
             $uploadBtn.attr({disabled: false});
-
+            var addmoreText = "More files";
             if (!document.getElementById('addMoreBtn')) {
-                $form.append($('<button/>').attr({
-                    class: "btn btn-success",
-                    type: "button",
-                    id: 'addMoreBtn'
-                }).html("Add more"));
-                
-                $('#pleaseSelect').html('Click "Add more" button to load more files');
-                
+                $form.find('.buttonsContainer .buttons')
+                        .append($('<button/>').attr({
+                            class: "btn btn-success",
+                            type: "button",
+                            id: 'addMoreBtn'
+                        }).html(addmoreText));
+
+                $('#pleaseSelect').html('Click ' + addmoreText + ' button to load more files');
+
                 $('#addMoreBtn').click(function(evt){
-                    $form.find(".controls").append($('<input/>').attr({
-                        type: "file",
-                        name: "files[]"}));
+                    var $tmpl = $form.find('.form-group').slice(0, -1).last().clone();
+                    var idx = parseInt($tmpl.find('input').attr('id').match(/\d+$/)[0]) + 1;
+                    $tmpl.find('label').attr({'for': 'file' + idx}).html('File ' + idx);
+                    $tmpl.find('input').attr({'id': 'file' + idx});
+                    var $c = $form.find(".buttonsContainer");
+                    $tmpl.insertBefore($c);
                 });
             }
         }

@@ -11,9 +11,6 @@
   |
  */
 
-Route::get('/', ['uses' => 'DefaultController@index']);
-Route::post('/process', ['uses' => 'DefaultController@process']);
-
 
 /*
   |--------------------------------------------------------------------------
@@ -28,7 +25,15 @@ Route::post('/process', ['uses' => 'DefaultController@process']);
 
 Route::group(['middleware' => ['web']], function () {
     Route::auth();
+    
+    Route::get('/', ['uses' => 'DefaultController@index']);
+    
     Route::get('/upload', ['middleware' => ['auth'], function () {
-    return view('default.upload');
-}]);
+        return view('default.upload');
+    }]);
+
+    Route::post('/process', [
+        'middleware' => ['auth'],
+        'uses' => 'DefaultController@process'
+    ]);
 });

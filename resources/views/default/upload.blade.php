@@ -3,45 +3,68 @@
 @section('meta')
 @endsection
 
+@section('scripts-head')
+<script src="/js/deps.js"></script>
+@endsection
+
 @section('scripts-body')
 <script src="/js/app.js"></script>
-<script src="/js/deps.js"></script>
 <script>
     $(function(){
-        $.ajaxPrefilter(function(options, originalOptions, xhr){
-            var $token = $("#fileupload").find('input[name="_token"]').val();
-            if ($token) {
-                return xhr.setRequestHeader('X-XSRF-TOKEN', $token);
-            }
-        });
+        var token = $("#fileupload").find('input[name="_token"]').val();
+        if (token) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': token
+                }
+            });
+        }
     });
 </script>
 @endsection
 
 @section('content')
 
-<div class="text-content">
-    <div class="span7 offset1">
-        @if(Session::has('success'))
-        <div class="alert-box success">
-            <h2>{!! Session::get('success') !!}</h2>
-        </div>
-        @endif
-        <p id="pleaseSelect">Choose files from your machine</p>
-        {!! Form::open(array('url'=>'process', 'method'=>'POST', 'files'=>true, 'id'=>'fileupload', 'multiple'=>true)) !!}
-        <div class="control-group">
-            <div class="controls">
-                {!! Form::file('files[]', array()) !!}
-                {!! Form::file('files[]', array()) !!}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            <h2 id="pleaseSelect">Choose files from your machine</h2>
+            {!! Form::open(array(
+            'url'=>'process',
+            'method'=>'POST',
+            'files'=>true,
+            'id'=>'fileupload',
+            'multiple'=>true,
+            'class'=>'form form-horizontal')) !!}
+            <div class="form-group">
+                <label for="file1" class="col-sm-2 control-label">File 1</label>
+                <div class="col-sm-10">
+                    {!! Form::file('files[]', array('class'=>'form-control', 'id'=>'file1')) !!}
+                </div>
             </div>
-            <div class="errors"></div>
+            <div class="form-group">
+                <label for="file2" class="col-sm-2 control-label">File 2</label>
+                <div class="col-sm-10">
+                    {!! Form::file('files[]', array('class'=>'form-control', 'id'=>'file2')) !!}
+                </div>
+            </div>
+            <div class="form-group buttonsContainer">
+                <div class="col-sm-offset-2 col-sm-10 buttons">
+                    {!! Form::button('Upload', array(
+                    'class'=>'btn btn-primary',
+                    'id'=>'uploadBtn',
+                    'disabled'=>true)) !!}
+                </div>
+            </div>
+            {!! Form::close() !!}
+            
+            <div class="col-md-12">
+                <div id="response"></div>
+            </div>
+            
         </div>
-        {!! Form::button('Upload', array('class'=>'btn btn-primary', 'id'=>'uploadBtn', 'disabled'=>true)) !!}
-        {!! Form::close() !!}
     </div>
 </div>
-
-<div id="response"></div>
 
 @endsection
 

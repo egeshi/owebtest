@@ -19,29 +19,19 @@ class DefaultController extends Controller
 
     /**
      * Login form page
-     * 
-     * @param Request $request
+     *
+     * @param  Request $request
      * @return type
      */
     public function index(Request $request)
     {
-        return view('default.index');
+        return Redirect::to('/upload');
     }
 
     /**
-     * Display upload form
-     * @param Request $request
-     * @return type
-     */
-//    public function upload(Request $request)
-//    {
-//        return view('default.upload');
-//    }
-
-    /**
      * Process uploaded files
-     * 
-     * @param Request $request
+     *
+     * @param  Request $request
      * @return type
      */
     public function process(Request $request)
@@ -49,6 +39,9 @@ class DefaultController extends Controller
 
         $files = Input::file('files');
         $uploaded = 0;
+        
+        //var_dump(Input::all());
+        //die(__FILE__ . ":" . __LINE__);
 
         foreach ($files as $file) {
             $req = array('file' => 'required');
@@ -69,25 +62,27 @@ class DefaultController extends Controller
             return Redirect::to('index')->withInput()->withErrors($validator);
         }
 
-        return view('default.result', [
+        return view(
+            'default.result',
+            [
             'result' => $diff
-        ]);
+            ]
+        );
     }
 
     /**
      * Compare files
-     * 
+     *
      * If 2 files provided:
      * 1. find if strings are different (*) (original|changed)
      * 2. find if string only exists in first file, removed (-) (show old)
      * 3. find if string only exists in second file, added (+) (show new)
      * 4. find if string exists in both files (" ")
-     * 
+     *
      * If more than 2 files
      * 1. find if string does not exist in first file (+)
      * 2. find if string exists only in first file (-)
      * 3. find if strings are different (*) (original|changed)
-     * 
      */
     protected function diff($files)
     {
@@ -212,5 +207,4 @@ class DefaultController extends Controller
 
         return $result;
     }
-
 }
