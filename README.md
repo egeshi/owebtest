@@ -1,6 +1,6 @@
 ## Project setup
 
-These steps suggest that all dependencies like composer, nodejs, npm etc. are already installed, configured and working properly
+These steps suggest that all dependencies like composer, nodejs, npm etc. are already installed, configured and working properly. The best is to use nginx server for laravel.
 
 1. Create project directory `$ mkdir projectdir && cd projectdir`
 2. Install Laravel `$ composer create-project --prefer-dist laravel/laravel .`
